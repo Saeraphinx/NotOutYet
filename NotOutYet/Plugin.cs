@@ -1,6 +1,4 @@
-﻿using BeatLeader.Components;
-using BeatLeader.Models;
-using HarmonyLib;
+﻿using HarmonyLib;
 using IPA;
 using IPA.Config;
 using IPA.Config.Stores;
