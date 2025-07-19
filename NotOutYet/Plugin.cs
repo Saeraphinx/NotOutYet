@@ -2,18 +2,11 @@
 using IPA;
 using IPA.Config;
 using IPA.Config.Stores;
-using IPA.Loader;
 using NotOutYet.Configuration;
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using TMPro;
-using UnityEngine;
-using static System.Net.WebRequestMethods;
 using IPALogger = IPA.Logging.Logger;
 
 namespace NotOutYet
@@ -50,8 +43,15 @@ namespace NotOutYet
             ApplyHarmonyPatches();
             if (PluginConfig.Instance.Regex == "DefaultUsername")
             {
-                var user = await BS_Utils.Gameplay.GetUserInfo.GetUserAsync();
-                PluginConfig.Instance.Regex = user.userName;
+                try
+                {
+                    var user = await BS_Utils.Gameplay.GetUserInfo.GetUserAsync();
+                    PluginConfig.Instance.Regex = user.userName;
+                } catch (Exception ex)
+                {
+                    Plugin.Log?.Warn("Error fetching user info: " + ex.Message);
+                    Plugin.Log?.Debug(ex);
+                }
             }
         }
         [OnDisable]
@@ -98,6 +98,8 @@ namespace NotOutYet.HarmonyPatches
     [HarmonyPatch("text", MethodType.Setter)]
     class MeshTextProReplaceSetText
     {
+        static readonly Regex regex = new Regex(PluginConfig.Instance.Regex, RegexOptions.IgnoreCase);
+
         [HarmonyPrefix]
         static bool Prefix(ref string value)
         {
@@ -107,13 +109,11 @@ namespace NotOutYet.HarmonyPatches
                 {
                     return true;
                 }
-                string text = value;
-                Regex regex = new Regex(PluginConfig.Instance.Regex, RegexOptions.IgnoreCase);
                 value = regex.Replace(value, PluginConfig.Instance.ReplacementText);
                 return true;
             } catch (Exception ex)
             {
-                  Plugin.Log?.Error("Error replacing text: " + ex.Message);
+                Plugin.Log?.Error("Error replacing text: " + ex.Message);
                 Plugin.Log?.Debug(ex);
                 return true;
             }
@@ -124,17 +124,17 @@ namespace NotOutYet.HarmonyPatches
     [HarmonyPatch("Awake")]
     class MeshTextProReplaceAwake
     {
+        static readonly Regex regex = new Regex(PluginConfig.Instance.Regex, RegexOptions.IgnoreCase);
+
         [HarmonyPostfix]
         static void Postfix(ref TextMeshProUGUI __instance)
         {
-            if (__instance.text == null)
-            {
-                return;
-            }
             try
             {
-                string text = __instance.text;
-                Regex regex = new Regex(PluginConfig.Instance.Regex, RegexOptions.IgnoreCase);
+                if (__instance.text == null)
+                {
+                    return;
+                }
                 __instance.text = regex.Replace(__instance.text, PluginConfig.Instance.ReplacementText);
             } catch (Exception ex)
             {
